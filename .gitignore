@@ -1,3 +1,5 @@
-ENCODE_experiments/
-fb/
-notes.txt
+fb
+Json
+*.tsv
+*.txt
+experiment_json_*
