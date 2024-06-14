@@ -14,6 +14,7 @@ import json
 import shutil
 
 def process_biological_replicates(metadata):
+
     # Extract all unique biological replicates from the filtered metadata
     unique_replicates = metadata.iloc[:, 5].unique()
     
@@ -49,23 +50,19 @@ def verify_file_origin(bed_files, bigbed_files, output_data, experiment_id):
     return matched
 
 def metadata_filtering(metadata, experiment_id, output_data, empty_experiment_ids):
+    
     # Filter metadata for the experiment ID (5th column, index 4)
     filtered_metadata = metadata[metadata.iloc[:, 4] == experiment_id]
     #print(f"Filtered by Experiment ID ({experiment_id}):")
     #print(filtered_metadata)
     #print("\n")
 
-
     # Further filter for 'IDR threshold peaks' output type (4th column, index 3)
     filtered_metadata = filtered_metadata[filtered_metadata.iloc[:, 3] == 'IDR thresholded peaks']
-    #print("Filtered by 'IDR thresholded peaks' Output Type:")
-    #print(filtered_metadata)
-    #print("\n")
 
     # Further filter for biological replicates
     filtered_metadata = process_biological_replicates(filtered_metadata)
     
-
     # Check if the filtered metadata is empty
     if filtered_metadata.empty:
         #print(f"Experiment ID {experiment_id} not found after filtering.\n")
@@ -84,11 +81,10 @@ def derived_from_QC(file):
     # Read the file into a DataFrame
     df = pd.read_csv(file, delimiter='\t')
     
-    # Function to extract the relevant part from the 4th column
     def extract_id(path):
         return path.split('/')[-2]
     
-    # Apply the extraction function to the 4th column
+    ## Process derived from column
     df['Parsed Column 4'] = df['bigBed Derived From'].apply(extract_id)
     
     # Compare the 3rd and the parsed 4th columns
@@ -108,7 +104,7 @@ def download_json_files(empty_ids_file):
     # Create a temporary directory for downloading JSON files in the current directory
     tmp_dir = tempfile.mkdtemp(prefix="experiment_json_", dir=".")
 
-    # Download JSON files using parallel curl commands
+    # Download JSON files
     for experiment_id in experiment_ids:
         output_path = os.path.join(tmp_dir, f"{experiment_id}.json")
         curl_command = f'curl -L -H "Accept: application/json" https://www.encodeproject.org/files/{experiment_id}/ > {output_path}'
@@ -157,12 +153,13 @@ if __name__ == '__main__':
     
     # List to store output data
     output_data = []
+
     # List to store empty experiment IDs
     empty_experiment_ids = []
 
     #experiment_id = 'ENCSR000EAD'
 
-    # For each experiment ID, call the function and process the lines
+    # For each experiment ID, call metadata_filtering function
     for experiment_id in experiment_ids:
         metadata_filtering(metadata, experiment_id, output_data, empty_experiment_ids)
 
@@ -179,7 +176,7 @@ if __name__ == '__main__':
         for eid in empty_experiment_ids:
             f.write(f"{eid}\n")
 
-    # Perform QC check on the output file
+    # Perform derived from QC check on the output file
     derived_from_QC(output_file)
 
     # Download JSON files for the empty experiment IDs
