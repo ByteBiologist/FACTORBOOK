@@ -1,22 +1,8 @@
 #!/usr/local/bin/python
 
 '''
-
-FACTORBOOK & FILER: Mapping BED to bigBed Files in ENCODE experiments for Motif Processing
-
-In FACTORBOOK, IDR thresholded ChIP-seq peaks from human TF ChIP-seq datasets are scanned 
-for motif instances. These peaks are in BED format and assigned an ENCODE ID.
-
-In FILER, we downloaded and processed peak datasets in bigBed format with it own file ID.
-
-To process the Factorbook motifs for FILER, we need the mapping between bed and bigBed files.
-
-metadata.tsv from ENCODE is the input file for this script, which inlucde the mapping information.
-
-Process ENCODE metadata to map BED files to bigBed files for all Factorbook motfs.
-
-python3 get_ENCODE_mapping.py filtered_metadata.txt ENCODE_experimentIDs.txt bedtobigBed_mapping.txt
-
+Process ENCODE metadata to map BED files to bigBed files for all ENCODE experiments used in calaloging Factorbook motifs. 
+Usage: python3 step2-bedtobigBed_mapping.py filtered_metadata.txt ENCODE_experimentIDs.txt factorbook_chipseq_meme_motifs.tsv bedtobigBed_mapping.txt 
 '''
 
 import pandas as pd
@@ -28,7 +14,6 @@ import json
 import shutil
 
 def process_biological_replicates(metadata):
-
     # Extract all unique biological replicates from the filtered metadata
     unique_replicates = metadata.iloc[:, 5].unique()
     
@@ -64,12 +49,8 @@ def verify_file_origin(bed_files, bigbed_files, output_data, experiment_id):
     return matched
 
 def metadata_filtering(metadata, experiment_id, output_data, empty_experiment_ids):
-    
     # Filter metadata for the experiment ID (5th column, index 4)
     filtered_metadata = metadata[metadata.iloc[:, 4] == experiment_id]
-    #print(f"Filtered by Experiment ID ({experiment_id}):")
-    #print(filtered_metadata)
-    #print("\n")
 
     # Further filter for 'IDR threshold peaks' output type (4th column, index 3)
     filtered_metadata = filtered_metadata[filtered_metadata.iloc[:, 3] == 'IDR thresholded peaks']
@@ -79,7 +60,6 @@ def metadata_filtering(metadata, experiment_id, output_data, empty_experiment_id
     
     # Check if the filtered metadata is empty
     if filtered_metadata.empty:
-        #print(f"Experiment ID {experiment_id} not found after filtering.\n")
         empty_experiment_ids.append(experiment_id)
         return
 
@@ -98,7 +78,7 @@ def derived_from_QC(file):
     def extract_id(path):
         return path.split('/')[-2]
     
-    ## Process derived from column
+    # Process derived from column
     df['Parsed Column 4'] = df['bigBed Derived From'].apply(extract_id)
     
     # Compare the 3rd and the parsed 4th columns
@@ -149,14 +129,40 @@ def update_empty_ids_with_json_info(empty_ids_file, tmp_dir):
 
     print(f"Updated {empty_ids_file} with biosample_summary and status information.")
 
+def merge_files(bedtobigBed_df, factorbook_file, output_file):
+    # Load the factorbook data
+    factorbook_df = pd.read_csv(factorbook_file, sep='\t')
+
+    # Filter out rows where 'Animal' is 'Mus musculus'
+    factorbook_df = factorbook_df[factorbook_df.iloc[:, 0] != 'Mus musculus']
+
+    # Merge the data on 'Experiment ID' using column indices
+    merged_df = pd.merge(factorbook_df, bedtobigBed_df.iloc[:, [0, 1, 2]], left_on=factorbook_df.columns[3], right_on=bedtobigBed_df.columns[0], how='left')
+
+    # Combine BED Accession and Consensus into a new column
+    merged_df['BED_Consensus'] = merged_df.iloc[:, len(merged_df.columns) - 1] + '_' + merged_df.iloc[:, 4]
+
+    # Arrange final set of columns in order
+    final_df = merged_df.loc[:, [factorbook_df.columns[0], factorbook_df.columns[1], factorbook_df.columns[2], factorbook_df.columns[3], bedtobigBed_df.columns[0], bedtobigBed_df.columns[1], bedtobigBed_df.columns[2], factorbook_df.columns[4], factorbook_df.columns[5], 'BED_Consensus']]
+
+    # Rename columns
+    final_df.columns = ['Animal', 'Biosample', 'Target', 'Experiment_ID', 'Experiment_ID', 'bigBed_Accession', 'BED_Accession', 'Consensus', 'Sample_Type', 'BED_Consensus']
+
+    # Write output
+    final_df.to_csv(output_file, sep='\t', index=False)
+
+    print(f"Output file '{output_file}' has been created successfully.")
+    return final_df
+
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
-        print("Usage: python script.py <metadata_file> <experiment_ids_file> <output_file>")
+    if len(sys.argv) != 5:
+        print("Usage: python script.py <metadata_file> <experiment_ids_file> <factorbook_file> <output_file>")
         sys.exit(1)
 
     metadata_file = sys.argv[1]
     experiment_ids_file = sys.argv[2]
-    output_file = sys.argv[3]
+    factorbook_file = sys.argv[3]
+    output_file = sys.argv[4]
 
     # Load the metadata
     metadata = pd.read_csv(metadata_file, sep='\t')
@@ -171,8 +177,6 @@ if __name__ == '__main__':
     # List to store empty experiment IDs
     empty_experiment_ids = []
 
-    #experiment_id = 'ENCSR000EAD'
-
     # For each experiment ID, call metadata_filtering function
     for experiment_id in experiment_ids:
         metadata_filtering(metadata, experiment_id, output_data, empty_experiment_ids)
@@ -180,9 +184,8 @@ if __name__ == '__main__':
     # Print the number of empty experiment IDs
     print(f"Total number of empty experiment IDs: {len(empty_experiment_ids)}")
 
-    # Convert the output data to a DataFrame and save it to a file
+    # Convert the output data to a DataFrame
     output_df = pd.DataFrame(output_data, columns=['Experiment ID', 'bigBed Accession', 'BED Accession', 'bigBed Derived From'])
-    output_df.to_csv(output_file, sep='\t', index=False)
 
     # Save the empty experiment IDs to a file
     empty_ids_file = "empty_ids.txt"
@@ -190,8 +193,9 @@ if __name__ == '__main__':
         for eid in empty_experiment_ids:
             f.write(f"{eid}\n")
 
-    # Perform derived from QC check on the output file
-    derived_from_QC(output_file)
+    # Perform derived from QC check on the output DataFrame
+    output_df.to_csv('temp_bedtobigBed_mapping.txt', sep='\t', index=False)
+    derived_from_QC('temp_bedtobigBed_mapping.txt')
 
     # Download JSON files for the empty experiment IDs
     tmp_dir = download_json_files(empty_ids_file)
@@ -203,3 +207,5 @@ if __name__ == '__main__':
     shutil.rmtree(tmp_dir)
     print(f"Deleted temporary directory {tmp_dir}")
 
+    # Merge files and download data based on BED_Consensus column
+    merged_df = merge_files(output_df, factorbook_file, output_file)
