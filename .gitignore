@@ -1,5 +1,14 @@
-fb
+fb_motifs
+fb_motifs_processed
 Json
+tmp
+tomtom_HOCOMOCO
+tomtom_JASPAR
+motif_databases
+pwm
+db
 *.tsv
 *.txt
-experiment_json_*
+*.gz
+*.fa
+*.fai
