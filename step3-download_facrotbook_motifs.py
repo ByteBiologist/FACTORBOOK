@@ -2,6 +2,8 @@
 
 '''
 Script to download data based on BED_Consensus column from a specified file.
+
+Usage: python3 step3-download_facrotbook_motifs.py bedtobigBed_mapping.txt fb_motifs
 '''
 
 import os
