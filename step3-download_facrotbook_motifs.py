@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 
 '''
-Script to download data based on BED_Consensus column from a specified file.
+Download Factorbook motifs.
 
 Usage: python3 step3-download_facrotbook_motifs.py bedtobigBed_mapping.txt fb_motifs
 '''
