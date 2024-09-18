@@ -12,3 +12,6 @@ db
 *.gz
 *.fa
 *.fai
+test.py
+tomtom
+*.log
