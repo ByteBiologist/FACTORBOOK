@@ -1,10 +1,7 @@
 #!/bin/bash
 
-################################################################################################################
-# Get ECNODE experiment IDs from FACTORBOOK MEME ChIP-seq Catalog. 
-# These IDs are needed to map Factorbook motifs to ENCODE ChIP-Seq experiments.
+# Collect the list of ECNODE experiment IDs from Factorbook motif catalog metadata 
 # Download metadata Json files of each individual experiments.
-################################################################################################################
 
 # URL, Input/Output files
 url="https://storage.googleapis.com/gcp.wenglab.org/factorbook_chipseq_meme_motifs.tsv"
